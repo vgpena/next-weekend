@@ -107,14 +107,15 @@ def scrape():
 
     sheet = HikesSheet()
 
+    totalHikes = 0
     for link in links:
         data = crawlPage("{}{}".format(baseURL, link.get('href')))
         if not data:
             continue
         hike_name, url, trailhead_info, distance, time_of_year = data
-        # pdb.set_trace()
         sheet.addHike(hike_name, url, trailhead_info, distance, time_of_year)
-    print('Done!')
+        totalHikes+=1
+    print('Done! {} hikes added.'.format(totalHikes))
     exit(1)
 
 scrape()
