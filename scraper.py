@@ -2,11 +2,30 @@ from bs4 import BeautifulSoup
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError
 import re
-
+import csv
 import pdb
 
 
 baseURL = "http://www.oregonhikers.org"
+
+class HikesSheet:
+    def __init__(self, file_name='hikes'):
+        self.file_name = file_name
+        self.columns = ['hike_name', 'url', 'trailhead_name', 'trailhead_lat', 'trailhead_lon', 'distance', 'time_of_year']
+        self.createHeadings(self.columns)
+
+    def createHeadings(self, headingsArr):
+        with open("{}.csv".format(self.file_name), 'w', newline='') as csvfile:
+            writer =  csv.writer(csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
+            writer.writerow(headingsArr)
+
+    def addHike(self, hike_name, url, trailhead_info, distance, time_of_year):
+        trailhead_name, trailhead_lat, trailhead_lon = trailhead_info
+        with open("{}.csv".format(self.file_name), 'a', newline='') as csvfile:
+            writer =  csv.writer(csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
+            writer.writerow([hike_name, url, trailhead_name, trailhead_lat, trailhead_lon, distance, time_of_year])
+
+
 
 def makeRequest(url):
     return Request(url, headers={'User-Agent': 'Mozilla/5.0'})
@@ -63,8 +82,19 @@ def crawlPage(url):
 
     # continue getting hike data
     hike_name = content.find('h1').string
+    try:
+        distance = content.find('ul').find(text=re.compile(r'Distance: ')).split(': ')[1].split('\n')[0].split(' miles')[0]
+    except:
+        return None
+    
+    try:
+        time_of_year = content.find('ul').find(text=re.compile(r'Seasons: ')).split(': ')[1].split('\n')[0]
+    except:
+        return None
 
-    print(hike_name)
+    # TODO: Forest pass/fees; dogs y/n
+
+    return (hike_name, url, trailhead_info, distance, time_of_year)
 
 def scrape():
     # TODO: loop over all pages of results
@@ -75,7 +105,16 @@ def scrape():
     wrapper = html.find_all('p')[0]
     links = wrapper.find_all('a')
 
+    sheet = HikesSheet()
+
     for link in links:
-        crawlPage("{}{}".format(baseURL, link.get('href')))
+        data = crawlPage("{}{}".format(baseURL, link.get('href')))
+        if not data:
+            continue
+        hike_name, url, trailhead_info, distance, time_of_year = data
+        # pdb.set_trace()
+        sheet.addHike(hike_name, url, trailhead_info, distance, time_of_year)
+    print('Done!')
+    exit(1)
 
 scrape()
