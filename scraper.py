@@ -34,7 +34,12 @@ def makeSoup(url):
     return BeautifulSoup(urlopen(makeRequest(url)), features="html.parser")
 
 def getTrailheadInfo(content):
-    link = content.find('ul').find('li').find('a')
+    try:
+        link = content.find('ul').find('li').find('a')
+    except:
+        print("Error getting trailhead info for hike: {}".format(content.find('h1')))
+        return None
+
     if link is None:
         return None
 
@@ -96,14 +101,38 @@ def crawlPage(url):
 
     return (hike_name, url, trailhead_info, distance, time_of_year)
 
+def findAllResultPages(url, arr=[]):
+    """Given a base Search URL, hit the Next button repeatedly and return all pages findable this way."""
+    result_pages=arr
+    result_pages.append(url)
+
+    html = makeSoup(url)
+    content = html.find(id='mw-content-text')
+    results_counter = content.find('b')
+    next_link = results_counter.next_sibling.next_sibling
+
+    if next_link.name == 'a':
+        return findAllResultPages("{}{}".format(baseURL, next_link.get('href')), result_pages)
+
+    return result_pages
+
+
+def findAllResultLinks(url):
+    result_pages = findAllResultPages(url)
+    links = []
+
+    for result_page in result_pages:
+        html = makeSoup(result_page)
+
+        wrapper = html.find_all('p')[0]
+        links += wrapper.find_all('a')
+
+    return links
+
 def scrape():
-    # TODO: loop over all pages of results
     startURL = "http://www.oregonhikers.org/w/index.php?title=Special:Ask&limit=500&q=%5B%5BDistance%3A%3A%3E0+miles%5D%5D&p=format%3Dlist%2Flink%3Dall%2Fheaders%3Dshow%2Fsearchlabel%3D%E2%80%A6-20further-20results&sort=&order=ASC&eq=yes"
-
-    html = makeSoup(startURL)
-
-    wrapper = html.find_all('p')[0]
-    links = wrapper.find_all('a')
+    
+    links = findAllResultLinks(startURL)
 
     sheet = HikesSheet()
 
