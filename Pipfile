@@ -13,6 +13,7 @@ pylint = "*"
 [packages]
 
 "bs4" = "*"
+pandas = "*"
 
 
 [requires]
